@@ -4,6 +4,9 @@ import { SERVER_URL } from "../constants.js";
 import ReactTable from "react-table-6";
 import "react-table-6/react-table.css";
 
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 class Carlist extends Component {
   constructor(props) {
     super(props);
@@ -15,7 +18,6 @@ class Carlist extends Component {
   }
 
   fetchCars = () => {
-
     fetch(SERVER_URL + "/api/car")
       .then((response) => response.json())
       .then((responseData) => {
@@ -24,17 +26,24 @@ class Carlist extends Component {
         });
       })
       .catch((err) => console.error(err));
+  };
 
-  }
-
+  // Delete car
   onDelClick = (link) => {
-    fetch(link, {method: 'DELETE'})
-    .then(res => this.fetchCars())
-    .catch(err => console.error(err))
-   }
+    if (window.confirm('Are you sure to delete?')) {
+        fetch(link, { method: "DELETE" })
+          .then(res => {
+            toast.success("Car deleted", {position: toast.POSITION.BOTTOM_LEFT});
+            this.fetchCars();
+          })
+          .catch(err => {
+            toast.error("Error when deleting", {position: toast.POSITION.BOTTOM_LEFT});
+            console.error(err);
+          });
+    }
+  };
 
   render() {
-
     const columns = [
       {
         Header: "Brand",
@@ -61,22 +70,31 @@ class Carlist extends Component {
         accessor: "price",
       },
       {
-        id: 'delbutton',
+        id: "delbutton",
         sortable: false,
         filterable: false,
         width: 100,
-        accessor: '_links.self.href',
-        Cell: ({value}) => (<button onClick={()=>{this.onDelClick(value)}}>Delete</button>)
-      }
+        accessor: "_links.self.href",
+        Cell: ({ value }) => (
+          <button
+            onClick={() => {
+              this.onDelClick(value);
+            }}
+          >
+            Delete
+          </button>
+        ),
+      },
     ];
 
     return (
       <div className="App">
-        <ReactTable data={this.state.arabalar} 
-                    columns={columns} 
-                    filterable={true}/>
-
-
+        <ReactTable
+          data={this.state.arabalar}
+          columns={columns}
+          filterable={true}
+        />
+        <ToastContainer autoClose={1500} />
       </div>
     );
   }
