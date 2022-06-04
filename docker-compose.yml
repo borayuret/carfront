@@ -1,0 +1,15 @@
+version: "3"
+services:
+   backend:
+      image: "borayuret/carbackend"
+      container_name: "backend"
+      ports:
+         - "8081:8081"
+
+   frontend:
+      image: "borayuret/carreact"
+      container_name: "react"
+      ports:
+         - "3000:3000"
+      depends_on:
+         - backend
