@@ -7,6 +7,20 @@ import "react-table-6/react-table.css";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
+import AddCar from "./AddCar.js";
+import EditCar from "./EditCar.js";
+
+import { CSVLink } from "react-csv";
+
+import Button from "@material-ui/core/Button";
+
+import Grid from "@material-ui/core/Grid";
+
+import IconButton from '@material-ui/core/IconButton';
+
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+
 class Carlist extends Component {
   constructor(props) {
     super(props);
@@ -17,8 +31,12 @@ class Carlist extends Component {
     this.fetchCars();
   }
 
+  // fetch cars
   fetchCars = () => {
-    fetch(SERVER_URL + "/api/car")
+    const token = sessionStorage.getItem("jwt");
+    fetch(SERVER_URL + "/api/car", {
+      headers: { Authorization: token },
+    })
       .then((response) => response.json())
       .then((responseData) => {
         this.setState({
@@ -30,17 +48,85 @@ class Carlist extends Component {
 
   // Delete car
   onDelClick = (link) => {
-    if (window.confirm('Are you sure to delete?')) {
-        fetch(link, { method: "DELETE" })
-          .then(res => {
-            toast.success("Car deleted", {position: toast.POSITION.BOTTOM_LEFT});
-            this.fetchCars();
-          })
-          .catch(err => {
-            toast.error("Error when deleting", {position: toast.POSITION.BOTTOM_LEFT});
-            console.error(err);
+    if (window.confirm("Are you sure to delete?")) {
+      const token = sessionStorage.getItem("jwt");
+      fetch(link, { method: "DELETE", headers: { Authorization: token } })
+        .then((res) => {
+          toast.success("Car deleted", {
+            position: toast.POSITION.BOTTOM_LEFT,
           });
+          this.fetchCars();
+        })
+        .catch((err) => {
+          toast.error("Error when deleting", {
+            position: toast.POSITION.BOTTOM_LEFT,
+          });
+          console.error(err);
+        });
     }
+  };
+
+  // Add new car
+  addCar(car) {
+    const token = sessionStorage.getItem("jwt");
+    fetch(SERVER_URL + "/api/car", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        'Authorization': token
+      },
+      body: JSON.stringify(car),
+    })
+      .then((res) => this.fetchCars())
+      .catch((err) => console.error(err));
+  }
+
+  // Update car
+  updateCar(car, link) {
+    const token = sessionStorage.getItem("jwt");
+    fetch(link, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        'Authorization': token
+      },
+      body: JSON.stringify(car),
+    })
+      .then((res) => {
+        toast.success("Changes saved", {
+          position: toast.POSITION.BOTTOM_LEFT,
+        });
+        this.fetchCars();
+      })
+      .catch((err) =>
+        toast.error("Error when saving", {
+          position: toast.POSITION.BOTTOM_LEFT,
+        })
+      );
+  }
+
+  // // Logout
+  // handleLogout = () => {
+  //   this.props.logout();
+  // };
+
+  filterCaseInsensitive = (filter, row) => {
+    const id = filter.pivotId || filter.id;
+    const content = row[id];
+    if (typeof content !== "undefined") {
+      // filter by text in the table or if it's a object, filter by key
+      if (typeof content === "object" && content !== null && content.key) {
+        return String(content.key).replace('İ', 'i').replace('I', 'ı')
+          .toLowerCase()
+          .includes(filter.value.toLowerCase());
+      } else {
+        return String(content).replace('İ', 'i').replace('I', 'ı')
+          .toLowerCase()
+          .includes(filter.value.toLowerCase());
+      }
+    }
+
+    return true;
   };
 
   render() {
@@ -70,29 +156,57 @@ class Carlist extends Component {
         accessor: "price",
       },
       {
-        id: "delbutton",
+        sortable: false,
+        filterable: false,
+        width: 100,
+        accessor: "_links.self.href",
+        Cell: ({ value, row }) => (
+          <EditCar
+            car={row}
+            link={value}
+            updateCar={this.updateCar}
+            fetchCars={this.fetchCars}
+          />
+        ),
+        width: 100,
+      },
+      {
         sortable: false,
         filterable: false,
         width: 100,
         accessor: "_links.self.href",
         Cell: ({ value }) => (
-          <button
-            onClick={() => {
+          <IconButton size="small" onClick={() => {
               this.onDelClick(value);
             }}
           >
-            Delete
-          </button>
+            <DeleteIcon color="error" />
+          </IconButton>
         ),
       },
     ];
 
     return (
       <div className="App">
+        <Grid container>
+          <Grid item>
+            <AddCar addCar={this.addCar} fetchCars={this.fetchCars} />
+          </Grid>
+          <Grid item style={{ padding: 15 }}>
+            <CSVLink data={this.state.arabalar} separator=";">
+              Export CSV
+            </CSVLink>
+          </Grid>
+          {/* <Grid item style={{textAlign: "right"}}>
+              <Button  variant="outlined"  color="secondary"  onClick={this.handleLogout}>Logout</Button>
+          </Grid> */}
+        </Grid>
+
         <ReactTable
           data={this.state.arabalar}
           columns={columns}
           filterable={true}
+          defaultFilterMethod={this.filterCaseInsensitive}
         />
         <ToastContainer autoClose={1500} />
       </div>
